@@ -1,23 +1,25 @@
-const createError = require('http-errors');
 const express = require('express');
+const createError = require('http-errors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const mongoose = require('mongoose');
 const passport = require('passport');
-
-const dishRouter = require('./routes/dishRouter');
-const promoRouter = require('./routes/promoRouter');
-const leaderRouter = require('./routes/leaderRouter');
-const Dishes = require('./models/dishes');
-const Promotions = require('./models/promotions');
-const Leaders = require('./models/leaders');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 const authenticate = require('./authenticate');
 const config = require('./config');
 
-const url = config.mongoUrl;
-const connect = mongoose.connect(url);
+const indexRouter = require('./routes/index');
+const usersRouter = require('./routes/users');
+const dishRouter = require('./routes/dishRouter');
+const promoRouter = require('./routes/promoRouter');
+const leaderRouter = require('./routes/leaderRouter');
 
+const url = config.mongoUrl;
+mongoose.Promise = require('bluebird');
+
+const connect = mongoose.connect(url);
 connect.then(
   (db) => {
     console.log('Connected correctly to server');
@@ -26,9 +28,6 @@ connect.then(
     console.log(err);
   }
 );
-
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
 
 var app = express();
 
@@ -39,9 +38,6 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
-var session = require('express-session');
-var FileStore = require('session-file-store')(session);
 
 app.use(cookieParser('12345-67890-09876-54321'));
 
@@ -51,18 +47,8 @@ app.use(passport.session());
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-function auth(req, res, next) {
-  console.log(req.user);
+app.use(express.static(path.join(__dirname, 'public')));
 
-  if (!req.user) {
-    var err = new Error('You are not authenticated from app.js!');
-    err.status = 403;
-    next(err);
-  } else {
-    next();
-  }
-}
-app.use(auth);
 app.use('/dishes', dishRouter);
 app.use('/promotions', promoRouter);
 app.use('/leaders', leaderRouter);
